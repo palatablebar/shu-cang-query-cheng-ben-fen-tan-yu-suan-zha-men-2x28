@@ -1,0 +1,42 @@
+/* 设计令牌：机房计费屏 —— 深墨底 + 荧光绿 + 等宽数字 + 分段进度条。
+   规则：oklch() 色板；禁纯黑纯白；双字体（display + body）+ 等宽数字。 */
+:root {
+  --paper: oklch(0.195 0.021 210);
+  --paper-2: oklch(0.165 0.019 212);
+  --paper-3: oklch(0.235 0.023 208);
+  --ink: oklch(0.93 0.012 195);
+  --ink-soft: oklch(0.78 0.014 197);
+  --ink-faint: oklch(0.62 0.015 200);
+  --rule: oklch(0.335 0.022 205);
+  --rule-strong: oklch(0.455 0.028 202);
+
+  --accent: oklch(0.86 0.19 150);
+  --accent-soft: oklch(0.72 0.16 152);
+  --accent-wash: oklch(0.29 0.06 155);
+  --ok: oklch(0.82 0.15 158);
+  --ok-wash: oklch(0.27 0.05 158);
+  --warn: oklch(0.84 0.15 85);
+  --warn-wash: oklch(0.29 0.05 85);
+  --danger: oklch(0.73 0.19 25);
+  --danger-wash: oklch(0.3 0.06 25);
+  --info: oklch(0.77 0.1 232);
+  --info-wash: oklch(0.27 0.04 232);
+
+  --font-display: 'Chakra Petch', 'Noto Sans SC', 'PingFang SC', sans-serif;
+  --font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, monospace;
+
+  --fs-xs: 0.7rem;
+  --fs-sm: 0.8rem;
+  --fs-md: 0.92rem;
+  --fs-lg: 1.16rem;
+  --fs-xl: clamp(1.45rem, 2.1vw, 2.1rem);
+  --fs-2xl: clamp(2.1rem, 4.2vw, 3.9rem);
+
+  --pad: clamp(14px, 1.6vw, 28px);
+  --rail: 232px;
+  --radius: 2px;
+  --shadow: 0 1px 0 oklch(0.26 0.02 208), 0 20px 46px -34px oklch(0.05 0.02 210 / 0.9);
+  --glow: 0 0 18px oklch(0.86 0.19 150 / 0.28);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
