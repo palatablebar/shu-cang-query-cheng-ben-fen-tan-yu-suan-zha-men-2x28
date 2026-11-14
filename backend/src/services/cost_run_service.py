@@ -263,6 +263,119 @@ def create_and_execute(
     return execute_run(db, run)
 
 
+def execute_run_for_period(db: Session, run: CostRun, period: str) -> CostRun:
+    """只重算指定账期：替换该账期团队的分摊/告警，其余团队从上一运行复制，保持账单完整。
+
+    用于供应商账单确认发布后的账期修正，不触碰无差异账期。
+    """
+    from src.utils.timeutil import period_bounds_utc
+
+    run.status = "running"
+    start_utc, end_utc = period_bounds_utc(period)
+    logs = list(
+        db.scalars(
+            select(QueryLog)
+            .where(QueryLog.queried_at >= start_utc, QueryLog.queried_at < end_utc)
+            .order_by(QueryLog.id)
+        ).all()
+    )
+    teams = {team.id: team for team in db.scalars(select(Team)).all()}
+    remaining = cost_model.remaining_days_of_month(local_now().date())
+    prices = {
+        "scan_price": run.scan_price,
+        "compute_price": run.compute_price,
+        "cache_discount": run.cache_discount,
+    }
+    summary = summarize(logs, prices, remaining)
+    period_team_ids = set(summary["team_stats"].keys())
+
+    previous = db.scalar(select(CostRun).where(CostRun.id != run.id).order_by(CostRun.id.desc()).limit(1))
+    if previous is not None:
+        prev_charges = list(db.scalars(select(Charge).where(Charge.run_id == previous.id)).all())
+        prev_alerts = list(db.scalars(select(BudgetAlert).where(BudgetAlert.run_id == previous.id)).all())
+        for charge in prev_charges:
+            if charge.team_id in period_team_ids:
+                continue
+            db.add(
+                Charge(
+                    run_id=run.id,
+                    team_id=charge.team_id,
+                    amount_yuan=charge.amount_yuan,
+                    ratio=charge.ratio,
+                    query_count=charge.query_count,
+                    cached_saved_yuan=charge.cached_saved_yuan,
+                    mom_ratio=charge.mom_ratio,
+                    user_split=charge.user_split,
+                    top_query=charge.top_query,
+                )
+            )
+        for alert in prev_alerts:
+            if alert.team_id in period_team_ids:
+                continue
+            db.add(
+                BudgetAlert(
+                    run_id=run.id,
+                    team_id=alert.team_id,
+                    forecast_yuan=alert.forecast_yuan,
+                    ratio=alert.ratio,
+                    level=alert.level,
+                    gate_action=alert.gate_action,
+                    status=alert.status,
+                    note=alert.note,
+                    reviewer=alert.reviewer,
+                    reviewed_at=alert.reviewed_at,
+                )
+            )
+
+    _write_charges_and_alerts(db, run, summary, teams)
+
+    all_charges = list(db.scalars(select(Charge).where(Charge.run_id == run.id)).all())
+    alerts = db.scalar(select(func.count()).select_from(BudgetAlert).where(BudgetAlert.run_id == run.id)) or 0
+    run.input_count = len(logs)
+    run.output_count = len(all_charges) + alerts
+    run.total_cost_yuan = round(sum(charge.amount_yuan for charge in all_charges), 2)
+    run.metrics = cost_model.summary_metrics(
+        total_cost_yuan=run.total_cost_yuan,
+        billed_count=summary["billed"],
+        failed_count=summary["failed"],
+        cache_hits=summary["cache_hits"],
+        scanned_gb=summary["scanned_total"],
+        anomaly_meta=summary["meta"],
+        anomaly_count=summary["anomaly_count"],
+        remaining_days=remaining,
+    )
+    run.metrics["alerts"] = alerts
+    run.metrics["teams"] = len(all_charges)
+    run.metrics["reconcile_period"] = period
+    run.metrics["period_team_count"] = len(period_team_ids)
+    run.status = "success"
+    run.log_text = (
+        f"对账修正账期 {period}：读取该账期查询 {len(logs)} 条（计费 {summary['billed']} / 未计费 {summary['failed']}）；"
+        f"替换 {len(period_team_ids)} 个团队分摊，其余团队沿用上一运行；告警 {alerts} 条。"
+    )
+    run.finished_at = utcnow()
+    db.flush()
+    return run
+
+
+def create_reconcile_run(db: Session, *, period: str, operator_email: str, bill_id: int) -> CostRun:
+    """创建一次由供应商对账确认触发的账期修正运行（单价沿用当前默认口径）。"""
+    run = CostRun(
+        run_no=next_run_no(db),
+        period=period,
+        scan_price=SCAN_PRICE_PER_GB,
+        compute_price=COMPUTE_PRICE_PER_GB_SECOND,
+        cache_discount=CACHE_DISCOUNT,
+        status="running",
+        trigger="reconcile",
+        operator_email=operator_email,
+        metrics={"source_bill_id": bill_id},
+    )
+    db.add(run)
+    db.flush()
+    return execute_run_for_period(db, run, period)
+
+
 def serialize(run: CostRun) -> dict:
     return {
         "id": run.id,

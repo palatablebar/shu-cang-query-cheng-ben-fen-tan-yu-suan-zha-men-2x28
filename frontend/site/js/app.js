@@ -6,6 +6,7 @@ import loginPage from './pages/login.js';
 import overviewPage from './pages/overview.js';
 import queryLogsPage from './pages/querylogs.js';
 import chargesPage from './pages/charges.js';
+import reconcilePage from './pages/reconcile.js';
 import alertsPage from './pages/alerts.js';
 import exportPage from './pages/export.js';
 import auditPage from './pages/audit.js';
@@ -14,6 +15,7 @@ const routes = [
   { path: '#/overview', page: overviewPage, permission: 'overview:read' },
   { path: '#/query-logs', page: queryLogsPage, permission: 'querylog:read' },
   { path: '#/charges', page: chargesPage, permission: 'charge:read' },
+  { path: '#/reconcile', page: reconcilePage, permission: 'bill:read' },
   { path: '#/alerts', page: alertsPage, permission: 'alert:read' },
   { path: '#/export', page: exportPage, permission: 'export:read' },
   { path: '#/audit', page: auditPage, permission: 'audit:read' },

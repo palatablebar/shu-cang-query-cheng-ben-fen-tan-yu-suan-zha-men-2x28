@@ -9,4 +9,8 @@ ACTIONS: dict[str, str] = {
     "alert.review": "处置预算告警",
     "export.charges": "导出分摊账单",
     "http.mutation": "写请求",
+    "bill.import": "导入供应商账单",
+    "bill.reconcile": "发起账单核对",
+    "bill.finding.resolve": "处置核对差异",
+    "bill.confirm": "确认发布账单",
 }

@@ -10,6 +10,7 @@ from src.routes.exports import router as exports_router
 from src.routes.health import router as health_router
 from src.routes.overview import router as overview_router
 from src.routes.query_logs import router as query_logs_router
+from src.routes.supplier_bills import router as supplier_bills_router
 from src.routes.teams import router as teams_router
 
 api_router = APIRouter()
@@ -21,5 +22,6 @@ api_router.include_router(query_logs_router)
 api_router.include_router(cost_runs_router)
 api_router.include_router(charges_router)
 api_router.include_router(alerts_router)
+api_router.include_router(supplier_bills_router)
 api_router.include_router(exports_router)
 api_router.include_router(audit_router)

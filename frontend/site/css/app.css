@@ -1287,3 +1287,43 @@ pre.code {
     grid-template-columns: 1fr auto;
   }
 }
+
+/* ---------- 供应商对账 ---------- */
+table.data tbody tr.selected {
+  background: var(--accent-wash);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.hero-flags .badge + b.mono {
+  margin-right: 14px;
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
+
+#csv_text {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--ink);
+  resize: vertical;
+}
+
+#csv_text:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+}
+
+.filter-bar select {
+  width: 100%;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.drawer .kv dd .mono {
+  word-break: break-all;
+}

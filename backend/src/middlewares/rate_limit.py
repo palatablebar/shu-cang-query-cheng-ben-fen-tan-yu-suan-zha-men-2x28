@@ -13,7 +13,7 @@ from src.utils.logger import get_logger
 
 logger = get_logger("rate_limit")
 SKIP_PATHS = {"/api/health", "/health"}
-WRITE_BUCKET_PREFIXES = ("/teams", "/cost-runs", "/alerts", "/exports", "/query-logs")
+WRITE_BUCKET_PREFIXES = ("/teams", "/cost-runs", "/alerts", "/exports", "/query-logs", "/supplier-bills")
 
 
 def _normalized_path(path: str) -> str:

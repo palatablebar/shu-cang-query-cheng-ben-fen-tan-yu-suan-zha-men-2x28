@@ -28,15 +28,18 @@ PERMISSIONS: dict[str, set[str]] = {
         "run:read", "run:create",
         "charge:read", "alert:read", "alert:review",
         "export:read", "audit:read", "overview:read",
+        "bill:read", "bill:import", "bill:reconcile", "bill:confirm", "bill:resolve",
     },
     Role.ANALYST.value: {
         "team:read", "querylog:read",
         "run:read", "run:create",
         "charge:read", "alert:read", "alert:review",
         "overview:read",
+        "bill:read", "bill:import", "bill:reconcile", "bill:resolve",
     },
     Role.VIEWER.value: {
         "team:read", "querylog:read", "run:read", "charge:read", "alert:read", "overview:read",
+        "bill:read",
     },
 }
 
@@ -46,6 +49,11 @@ ALERT_REVIEW_ROLES = (Role.ADMIN.value, Role.ANALYST.value)
 EXPORT_ROLES = (Role.ADMIN.value,)
 AUDIT_ROLES = (Role.ADMIN.value,)
 READ_ROLES = (Role.ADMIN.value, Role.ANALYST.value, Role.VIEWER.value)
+BILL_READ_ROLES = READ_ROLES
+BILL_IMPORT_ROLES = (Role.ADMIN.value, Role.ANALYST.value)
+BILL_RECONCILE_ROLES = (Role.ADMIN.value, Role.ANALYST.value)
+BILL_CONFIRM_ROLES = (Role.ADMIN.value,)
+BILL_RESOLVE_ROLES = (Role.ADMIN.value, Role.ANALYST.value)
 
 
 def has_permission(role: str, permission: str) -> bool:

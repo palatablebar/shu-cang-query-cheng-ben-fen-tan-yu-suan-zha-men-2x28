@@ -218,3 +218,81 @@ def calibrate_budget(team_code: str, forecast_yuan: float) -> float:
     step = BUDGET_STEPS.get(team_code, 50.0)
     raw = forecast_yuan / ratio
     return max(step, round(raw / step) * step)
+
+
+# ---- 供应商对账演示账单（确定性）----
+# 供应商按整月扫描量一口价：单价统一 0.030 元/GB（高于平台 0.028），
+# 并人为制造漏计、重复、平台多计、失败查询四类典型差异。
+SUPPLIER_FLAT_UNIT_PRICE = 0.030
+SUPPLIER_DUP_QUERY_ID = "qh-00007"
+SUPPLIER_MISSING_EXTRA_ID = "qh-supplier-only-001"
+
+
+def build_supplier_bill_rows(anchor: datetime) -> list[dict]:
+    """基于查询日志构造供应商账单行，故意与平台口径产生可解释的差异。"""
+    query_rows = build_query_rows(anchor)
+    bill_rows: list[dict] = []
+    skip_ids = {"qh-00003", "qh-00009"}  # 供应商账单漏掉 -> 平台多计
+    for index, row in enumerate(query_rows):
+        if row["query_id"] in skip_ids:
+            continue
+        amount = round(row["scan"] * SUPPLIER_FLAT_UNIT_PRICE, 6)
+        bill_rows.append(
+            {
+                "query_id": row["query_id"],
+                "team_code": row["team_code"],
+                "user_email": row["user_email"],
+                "scanned_gb": round(row["scan"], 3),
+                "unit_price": SUPPLIER_FLAT_UNIT_PRICE,
+                "amount_yuan": amount,
+                "queried_at": row["queried_at"],
+            }
+        )
+    # 重复计费：同一 query_id 再收一次
+    dup_source = next(row for row in query_rows if row["query_id"] == SUPPLIER_DUP_QUERY_ID)
+    bill_rows.append(
+        {
+            "query_id": SUPPLIER_DUP_QUERY_ID,
+            "team_code": dup_source["team_code"],
+            "user_email": dup_source["user_email"],
+            "scanned_gb": round(dup_source["scan"], 3),
+            "unit_price": SUPPLIER_FLAT_UNIT_PRICE,
+            "amount_yuan": round(dup_source["scan"] * SUPPLIER_FLAT_UNIT_PRICE, 6),
+            "queried_at": dup_source["queried_at"],
+        }
+    )
+    # 供应商独有计费笔（平台完全没有）-> 漏计
+    bill_rows.append(
+        {
+            "query_id": SUPPLIER_MISSING_EXTRA_ID,
+            "team_code": "team-a",
+            "user_email": "shen.yi@costcharge.io",
+            "scanned_gb": 120.0,
+            "unit_price": SUPPLIER_FLAT_UNIT_PRICE,
+            "amount_yuan": round(120.0 * SUPPLIER_FLAT_UNIT_PRICE, 6),
+            "queried_at": anchor,
+        }
+    )
+    return bill_rows
+
+
+def supplier_bill_csv(anchor: datetime) -> str:
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(["查询ID", "团队编码", "用户邮箱", "扫描量GB", "单价(元/GB)", "金额(元)", "查询时间"])
+    for row in build_supplier_bill_rows(anchor):
+        writer.writerow(
+            [
+                row["query_id"],
+                row["team_code"],
+                row["user_email"],
+                f"{row['scanned_gb']:.3f}",
+                f"{row['unit_price']:.4f}",
+                f"{row['amount_yuan']:.6f}",
+                row["queried_at"].isoformat(),
+            ]
+        )
+    return buffer.getvalue()

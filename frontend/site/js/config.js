@@ -21,9 +21,10 @@ export const NAV = [
   { to: '#/overview', no: '01', label: '成本总览', permission: 'overview:read' },
   { to: '#/query-logs', no: '02', label: '查询日志', permission: 'querylog:read' },
   { to: '#/charges', no: '03', label: '团队分摊', permission: 'charge:read' },
-  { to: '#/alerts', no: '04', label: '预算告警', permission: 'alert:read' },
-  { to: '#/export', no: '05', label: '账单导出', permission: 'export:read' },
-  { to: '#/audit', no: '06', label: '审计日志', permission: 'audit:read' },
+  { to: '#/reconcile', no: '04', label: '供应商对账', permission: 'bill:read' },
+  { to: '#/alerts', no: '05', label: '预算告警', permission: 'alert:read' },
+  { to: '#/export', no: '06', label: '账单导出', permission: 'export:read' },
+  { to: '#/audit', no: '07', label: '审计日志', permission: 'audit:read' },
 ];
 
 export const ROLE_LABELS = {
@@ -45,9 +46,27 @@ export const PERMISSIONS = {
     'alert:review',
     'export:read',
     'audit:read',
+    'bill:read',
+    'bill:import',
+    'bill:reconcile',
+    'bill:confirm',
+    'bill:resolve',
   ],
-  analyst: ['overview:read', 'team:read', 'querylog:read', 'run:read', 'run:create', 'charge:read', 'alert:read', 'alert:review'],
-  viewer: ['overview:read', 'team:read', 'querylog:read', 'run:read', 'charge:read', 'alert:read'],
+  analyst: [
+    'overview:read',
+    'team:read',
+    'querylog:read',
+    'run:read',
+    'run:create',
+    'charge:read',
+    'alert:read',
+    'alert:review',
+    'bill:read',
+    'bill:import',
+    'bill:reconcile',
+    'bill:resolve',
+  ],
+  viewer: ['overview:read', 'team:read', 'querylog:read', 'run:read', 'charge:read', 'alert:read', 'bill:read'],
 };
 
 export const ENUMS = {
@@ -67,6 +86,26 @@ export const ENUMS = {
     manual: '手动',
     schedule: '定时',
     seed: '初始化',
+    reconcile: '对账修正',
+  },
+  billStatus: {
+    imported: '待核对',
+    checking: '核对中',
+    matched: '待确认',
+    failed: '核对失败',
+    confirmed: '已发布',
+  },
+  diffType: {
+    missing: '漏计',
+    duplicate: '重复',
+    price_mismatch: '单价不符',
+    platform_extra: '平台多计',
+    matched: '一致',
+  },
+  findingStatus: {
+    open: '待处置',
+    applied: '已入账',
+    dismissed: '已驳回',
   },
   alertLevel: {
     normal: '正常',
@@ -96,6 +135,30 @@ export function levelTone(level) {
 
 export function reviewTone(status) {
   return { pending: 'pending warn', confirmed: 'ok', dismissed: 'danger' }[status] || 'info';
+}
+
+export function billStatusTone(status) {
+  return {
+    imported: 'info',
+    checking: 'pending warn',
+    matched: 'warn',
+    failed: 'danger',
+    confirmed: 'ok',
+  }[status] || 'info';
+}
+
+export function diffTone(type) {
+  return {
+    missing: 'warn',
+    duplicate: 'danger',
+    price_mismatch: 'high',
+    platform_extra: 'info',
+    matched: 'ok',
+  }[type] || 'info';
+}
+
+export function findingTone(status) {
+  return { open: 'pending warn', applied: 'ok', dismissed: 'danger' }[status] || 'info';
 }
 
 export function pct(value, digits = 1) {

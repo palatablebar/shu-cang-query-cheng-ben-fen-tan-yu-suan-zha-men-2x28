@@ -40,3 +40,15 @@ def parse_date(text: str | None) -> date | None:
         return date.fromisoformat(text[:10])
     except ValueError:
         return None
+
+
+def period_bounds_utc(period: str) -> tuple[datetime, datetime]:
+    """账期 'YYYY-MM' 在业务时区下的 [起, 止)，换算回 UTC naive（与 queried_at 存储口径一致）。"""
+    year, month = (int(part) for part in period.split("-"))
+    offset = timedelta(minutes=settings.app_timezone_offset_minutes)
+    start_local = datetime(year, month, 1)
+    if month == 12:
+        end_local = datetime(year + 1, 1, 1)
+    else:
+        end_local = datetime(year, month + 1, 1)
+    return start_local - offset, end_local - offset

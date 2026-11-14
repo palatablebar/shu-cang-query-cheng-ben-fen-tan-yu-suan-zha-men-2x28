@@ -22,9 +22,10 @@ from src.models.budget_alert import BudgetAlert
 from src.models.charge import Charge
 from src.models.cost_run import CostRun
 from src.models.query_log import QueryLog
+from src.models.supplier_bill import SupplierBill
 from src.models.team import Team
 from src.models.user import User
-from src.services import auth_service, cost_model, cost_run_service, team_service
+from src.services import auth_service, cost_model, cost_run_service, reconcile_service, team_service
 from src.utils.timeutil import local_now, utcnow
 
 from scripts import demo_config
@@ -132,6 +133,29 @@ def ensure_run(db, teams: dict[str, Team]) -> CostRun:
     )
 
 
+def ensure_supplier_bill(db) -> dict | None:
+    """幂等导入并核对一张供应商演示账单（差异保持 open，不自动确认发布）。
+
+    使用固定时间锚点生成 CSV，保证文件哈希在重跑间稳定，从而靠 file_hash 去重。
+    """
+    period = f"{local_now():%Y-%m}"
+    anchor = utcnow().replace(month=11, day=13, hour=6, minute=0, second=0, microsecond=0)
+    csv_text = demo_config.supplier_bill_csv(anchor)
+    file_hash = reconcile_service.reconcile_model.bill_file_hash(csv_text)
+    if db.scalar(select(SupplierBill).where(SupplierBill.file_hash == file_hash)) is not None:
+        return None
+    bill = reconcile_service.import_bill(
+        db,
+        period=period,
+        filename=f"supplier-bill-{period}-demo.csv",
+        csv_text=csv_text,
+        operator_email="admin@costcharge.io",
+    )
+    run, _ = reconcile_service.start_reconciliation(db, bill, "admin@costcharge.io")
+    db.flush()
+    return {"bill_id": bill.id, "recon_no": run.recon_no, "diff_total_yuan": run.diff_total_yuan}
+
+
 def ensure_audit(db) -> None:
     seeds = [
         ("seed-audit-1", "admin@costcharge.io", "admin", "team.update", "team", {"budget_yuan": 21600}),
@@ -160,14 +184,17 @@ def seed_all() -> dict:
         users = ensure_users(db, teams)
         ensure_query_logs(db, teams)
         ensure_run(db, teams)
+        supplier = ensure_supplier_bill(db)
         ensure_audit(db)
 
         runs = db.scalar(select(func.count()).select_from(CostRun)) or 0
         charges = db.scalar(select(func.count()).select_from(Charge)) or 0
+        bills = db.scalar(select(func.count()).select_from(SupplierBill)) or 0
         pending = db.scalar(select(func.count()).select_from(BudgetAlert).where(BudgetAlert.status == "pending")) or 0
         summary = (
             f"SEED_SUMMARY brand=costcharge users={users} sources={len(teams)} "
-            f"runs={runs} findings={charges} pending={pending}"
+            f"runs={runs} findings={charges} pending={pending} bills={bills} "
+            f"bill_diff={supplier['diff_total_yuan'] if supplier else 'reused'}"
         )
         print(summary, flush=True)
         return {
@@ -176,6 +203,7 @@ def seed_all() -> dict:
             "runs": runs,
             "charges": charges,
             "pending": pending,
+            "bills": bills,
         }
 
 
